@@ -1,0 +1,31 @@
+name: Generate daily API data
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-api-generation
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the protected generation endpoint
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          DAILY_GENERATION_TOKEN: ${{ secrets.DAILY_GENERATION_TOKEN }}
+        run: |
+          curl --fail-with-body \
+            --retry 3 \
+            --retry-all-errors \
+            --max-time 300 \
+            --request POST \
+            --header "Authorization: Bearer ${DAILY_GENERATION_TOKEN}" \
+            "${API_BASE_URL%/}/api/admin/generate"
+
