@@ -7,6 +7,12 @@ import pandas as pd
 
 from generator.historical_seed import generate_historical_data
 from generator.messiness import apply_messiness
+from app.generation_service import (
+    _canonical_json,
+    _canonical_record,
+    _row_hash,
+    _state_hash,
+)
 
 
 def test_generation_is_idempotent(generation_service, small_config):
@@ -143,3 +149,95 @@ def test_email_campaign_spend_uses_attempted_sends_and_production_cost(
         daily_dates[email_daily.index] != send_date,
         "spend",
     ].eq(0).all()
+
+
+def test_campaign_daily_state_hash_is_versioned_and_stable():
+    record = {
+        "metric_date": "2024-01-01",
+        "campaign_id": 101,
+        "spend": 100.0,
+    }
+
+    legacy_hash = _row_hash(record)
+    versioned_hash = _state_hash(
+        "fact_campaign_daily",
+        record,
+    )
+
+    assert versioned_hash != legacy_hash
+    assert versioned_hash == _state_hash(
+        "fact_campaign_daily",
+        record,
+    )
+    assert _state_hash("fact_payment", record) == legacy_hash
+
+
+def test_versioned_hash_replays_campaign_daily_history_once(
+    generation_service,
+    small_config,
+):
+    generation_service.generate_through(
+        small_config.historical_cutoff_date
+    )
+
+    baseline = generate_historical_data(
+        start_date=small_config.history_start_date,
+        end_date=small_config.historical_cutoff_date,
+        config=small_config,
+    )
+    campaign_daily = baseline.clean_tables[
+        "fact_campaign_daily"
+    ]
+
+    legacy_updates = []
+    for record in campaign_daily.to_dict(orient="records"):
+        normalized = _canonical_record(record)
+        business_key = _canonical_json(
+            [
+                normalized["metric_date"],
+                normalized["campaign_id"],
+            ]
+        )
+        legacy_updates.append(
+            (
+                _row_hash(normalized),
+                business_key,
+            )
+        )
+
+    with generation_service.store.connection() as connection:
+        connection.executemany(
+            """
+            UPDATE source_state
+            SET row_hash = ?
+            WHERE table_name = 'fact_campaign_daily'
+              AND business_key = ?
+            """,
+            legacy_updates,
+        )
+        connection.commit()
+
+    replay = generation_service.generate_through("2025-12-13")
+
+    replay_day_count = (
+        date(2025, 12, 13)
+        - small_config.history_start_date
+    ).days + 1
+    expected_replayed_rows = (
+        replay_day_count * len(small_config.campaigns)
+    )
+
+    assert replay["table_counts"]["fact_campaign_daily"][
+        "changed_clean_rows"
+    ] == expected_replayed_rows
+    assert replay["table_counts"]["fact_campaign_daily"][
+        "delivered_raw_rows"
+    ] >= expected_replayed_rows
+
+    following_day = generation_service.generate_through(
+        "2025-12-14"
+    )
+
+    assert following_day["table_counts"]["fact_campaign_daily"][
+        "changed_clean_rows"
+    ] == len(small_config.campaigns)

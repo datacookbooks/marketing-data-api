@@ -52,6 +52,26 @@ def _row_hash(record: dict) -> str:
     return hashlib.sha256(_canonical_json(record).encode("utf-8")).hexdigest()
 
 
+# Internal-only version bump: replay campaign-daily history once on the
+# next new-date generation without changing the public source schema.
+
+
+CAMPAIGN_DAILY_STATE_HASH_VERSION = "campaign-daily-spend-v2"
+
+
+def _state_hash(table_name: str, record: dict) -> str:
+    if table_name == "fact_campaign_daily":
+        return _row_hash(
+            {
+                "_state_hash_version": (
+                    CAMPAIGN_DAILY_STATE_HASH_VERSION
+                ),
+                "record": record,
+            }
+        )
+    return _row_hash(record)
+
+
 def _messiness_seed(base_seed: int, target_date: date) -> int:
     payload = f"{base_seed}|{target_date.isoformat()}|source-delivery".encode("utf-8")
     return int.from_bytes(hashlib.blake2b(payload, digest_size=4).digest(), "big")
@@ -135,7 +155,7 @@ class GenerationService:
                 normalized = _canonical_record(record)
                 business_key = _canonical_json([normalized[key] for key in keys])
                 current_keys.add(business_key)
-                digest = _row_hash(normalized)
+                digest = _state_hash(table_name, normalized)
                 if old_hashes.get(business_key) != digest:
                     changed_positions.append(position)
                     updates.append((business_key, digest))
