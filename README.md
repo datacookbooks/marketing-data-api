@@ -218,3 +218,15 @@ After deployment, verify:
    `status: already_current` and adds zero rows.
 4. A new generation date increases at least some table cursors.
 5. Redeploying the Railway service preserves the existing row counts.
+
+## Versioned campaign-daily replay
+
+`CAMPAIGN_DAILY_STATE_HASH_VERSION` is included only in the internal state
+hash for `fact_campaign_daily`. Changing this version causes the next
+successful new-date generation to append one corrected delivery of the
+complete deterministic campaign-daily history.
+
+The original raw deliveries remain available as an audit trail. After the
+replay, the stored hashes use the new version and normal incremental behavior
+resumes. Downstream consumers must ingest the newly appended cursor range and
+apply their documented latest-record cleaning logic.
