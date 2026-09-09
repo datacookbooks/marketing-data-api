@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import timedelta
 from typing import Dict
 
 import numpy as np
@@ -66,8 +67,6 @@ def apply_messiness(
         if table_name == "fact_campaign_daily":
             for idx in _sample_indices(rng, len(raw), d.missing_click_rate):
                 raw.loc[idx, "clicks"] = ""
-            for idx in _sample_indices(rng, len(raw), d.malformed_numeric_rate):
-                raw.loc[idx, "spend"] = "unknown"
             correction_positions = _sample_indices(rng, len(raw), d.late_correction_rate)
             if correction_positions.size:
                 corrections = raw.iloc[correction_positions].copy()
@@ -76,7 +75,7 @@ def apply_messiness(
                         corrections.loc[idx, "spend"] = f"{float(corrections.loc[idx, 'spend']) * rng.uniform(0.94, 1.08):.2f}"
                     except (TypeError, ValueError):
                         pass
-                    corrections.loc[idx, "ingested_at"] = str(pd.Timestamp(clean.loc[idx, "ingested_at"]) + pd.Timedelta(days=2))
+                    corrections.loc[idx, "ingested_at"] = str(pd.Timestamp(clean.loc[idx, "ingested_at"]) + timedelta(days=2))
                 raw = pd.concat([raw, corrections], ignore_index=True)
 
         if table_name == "fact_payment":

@@ -37,6 +37,8 @@ class CampaignConfig:
     exposure_rate: float
     click_through_rate: float
     cost_per_click: float
+    email_cost_per_attempted_send: float = 0.0
+    email_production_cost_per_send: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -75,9 +77,15 @@ class ProjectConfig:
             102, "Learn Guitar Social", "Paid Social", "Acquisition",
             date(2024, 1, 1), None, 0.85, 38.0, 0.035, 0.010, 0.82, 0.020, 1.35,
         ),
+        # Avoidable quarterly production: 4 hours at $60/hour,
+        # plus $0.001 per attempted treatment email; non-send days cost zero.
         CampaignConfig(
-            103, "Free-to-Pro Nurture", "Email", "Free-to-paid conversion",
-            date(2024, 1, 1), None, 0.85, 0.0, 0.045, 0.032, 0.76, 0.115, 0.08,
+            103, "Free-to-Pro Nurture", "Email",
+            "Free-to-paid conversion",
+            date(2024, 1, 1), None, 0.85, 0.0, 0.045,
+            0.032, 0.76, 0.115, 0.0,
+            email_cost_per_attempted_send=0.001,
+            email_production_cost_per_send=240.0,
         ),
     ))
     defects: DefectConfig = field(default_factory=DefectConfig)

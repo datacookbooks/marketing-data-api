@@ -123,7 +123,7 @@ def _new_customer(
         "experience_level": str(rng.choice(["Beginner", "Intermediate", "Advanced"], p=[0.62, 0.28, 0.10])),
         "initial_acquisition_channel": channel,
         "first_campaign_id": first_campaign_id,
-        "source_updated_at": signup_timestamp + pd.Timedelta(hours=2),
+        "source_updated_at": signup_timestamp + timedelta(hours=2),
         "_initial_plan_id": initial_plan_id,
         "_payment_risk": float(rng.beta(1.8, 20.0)),
         "_churn_risk": float(rng.lognormal(mean=-0.05, sigma=0.35)),
@@ -147,7 +147,7 @@ def _acquisition_population(start_date: date, end_date: date, config: ProjectCon
                 assignment_arm = "Treatment" if rng.random() < campaign.treatment_share else "Holdout"
                 assigned_at = _utc_timestamp(day, rng, 6, 12)
                 exposed = assignment_arm == "Treatment" and rng.random() < campaign.exposure_rate
-                first_exposed_at = assigned_at + pd.Timedelta(hours=int(rng.integers(1, 18))) if exposed else pd.NaT
+                first_exposed_at = assigned_at + timedelta(hours=int(rng.integers(1, 18))) if exposed else pd.NaT
                 probability = campaign.baseline_conversion_rate
                 if assignment_arm == "Treatment":
                     probability += campaign.intention_to_treat_lift
@@ -187,7 +187,7 @@ def _acquisition_population(start_date: date, end_date: date, config: ProjectCon
                     "assignment_arm": assignment_arm,
                     "assigned_at": assigned_at,
                     "first_exposed_at": first_exposed_at,
-                    "source_updated_at": assigned_at + pd.Timedelta(days=1),
+                    "source_updated_at": assigned_at + timedelta(days=1),
                 })
                 outcomes.append({
                     "assignment_id": assignments[-1]["assignment_id"],
@@ -243,7 +243,7 @@ def _nurture_population(customers: list[dict], start_date: date, end_date: date,
             assigned_at = _utc_timestamp(window_start, rng, 7, 11)
             arm = "Treatment" if rng.random() < campaign.treatment_share else "Holdout"
             exposed = arm == "Treatment" and rng.random() < campaign.exposure_rate
-            first_exposed_at = assigned_at + pd.Timedelta(hours=int(rng.integers(1, 36))) if exposed else pd.NaT
+            first_exposed_at = assigned_at + timedelta(hours=int(rng.integers(1, 36))) if exposed else pd.NaT
             probability = campaign.baseline_conversion_rate + (
                 campaign.intention_to_treat_lift if arm == "Treatment" else 0.0
             )
@@ -273,7 +273,7 @@ def _nurture_population(customers: list[dict], start_date: date, end_date: date,
                 "assignment_arm": arm,
                 "assigned_at": assigned_at,
                 "first_exposed_at": first_exposed_at,
-                "source_updated_at": assigned_at + pd.Timedelta(days=1),
+                "source_updated_at": assigned_at + timedelta(days=1),
             })
             outcomes.append({
                 "assignment_id": assignment_id,
@@ -290,7 +290,7 @@ def _nurture_population(customers: list[dict], start_date: date, end_date: date,
 def _subscription_history(customers: list[dict], nurture_conversion: dict, end_date: date, config: ProjectConfig):
     periods: list[dict] = []
     plan_by_id = config.plan_by_id()
-    end_limit = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
+    end_limit = pd.Timestamp(end_date, tz="UTC") + timedelta(days=1)
 
     for customer in customers:
         customer_id = customer["customer_id"]
@@ -306,7 +306,7 @@ def _subscription_history(customers: list[dict], nurture_conversion: dict, end_d
                 "period_start_timestamp": initial_start,
                 "period_end_timestamp": free_end,
                 "end_reason": "upgrade" if conversion else None,
-                "source_updated_at": (free_end if conversion else initial_start) + pd.Timedelta(hours=3),
+                "source_updated_at": (free_end if conversion else initial_start) + timedelta(hours=3),
             })
             if not conversion:
                 continue
@@ -328,7 +328,7 @@ def _subscription_history(customers: list[dict], nurture_conversion: dict, end_d
                     "period_start_timestamp": segment_start,
                     "period_end_timestamp": pd.NaT,
                     "end_reason": None,
-                    "source_updated_at": segment_start + pd.Timedelta(hours=3),
+                    "source_updated_at": segment_start + timedelta(hours=3),
                 })
                 break
 
@@ -359,7 +359,7 @@ def _subscription_history(customers: list[dict], nurture_conversion: dict, end_d
                 "period_start_timestamp": segment_start,
                 "period_end_timestamp": next_review,
                 "end_reason": end_reason,
-                "source_updated_at": next_review + pd.Timedelta(hours=3),
+                "source_updated_at": next_review + timedelta(hours=3),
             })
             if new_plan == 1:
                 periods.append({
@@ -369,12 +369,12 @@ def _subscription_history(customers: list[dict], nurture_conversion: dict, end_d
                     "period_start_timestamp": next_review,
                     "period_end_timestamp": pd.NaT,
                     "end_reason": None,
-                    "source_updated_at": next_review + pd.Timedelta(hours=3),
+                    "source_updated_at": next_review + timedelta(hours=3),
                 })
                 break
             if new_plan == 0:
                 if rng.random() < 0.12:
-                    reactivation = next_review + pd.Timedelta(days=int(rng.integers(30, 121)))
+                    reactivation = next_review + timedelta(days=int(rng.integers(30, 121)))
                     if reactivation < end_limit:
                         segment_start = reactivation
                         review_date = reactivation
@@ -392,7 +392,7 @@ def _payment_events(periods: list[dict], customers: list[dict], end_date: date, 
     payments: list[dict] = []
     customer_lookup = {c["customer_id"]: c for c in customers}
     plan_lookup = config.plan_by_id()
-    end_limit = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
+    end_limit = pd.Timestamp(end_date, tz="UTC") + timedelta(days=1)
 
     for period in periods:
         plan = plan_lookup[period["plan_id"]]
@@ -418,9 +418,9 @@ def _payment_events(periods: list[dict], customers: list[dict], end_date: date, 
                     "payment_type": initial_type,
                     "payment_status": "failed",
                     "attempt_number": 1,
-                    "ingested_at": billing_time + pd.Timedelta(hours=2),
+                    "ingested_at": billing_time + timedelta(hours=2),
                 })
-                retry_time = billing_time + pd.Timedelta(days=3)
+                retry_time = billing_time + timedelta(days=3)
                 if retry_time < min(period_end, end_limit):
                     recovered = bool(rng.random() < config.retry_recovery_rate)
                     payments.append({
@@ -432,7 +432,7 @@ def _payment_events(periods: list[dict], customers: list[dict], end_date: date, 
                         "payment_type": "retry",
                         "payment_status": "succeeded" if recovered else "failed",
                         "attempt_number": 2,
-                        "ingested_at": retry_time + pd.Timedelta(hours=2),
+                        "ingested_at": retry_time + timedelta(hours=2),
                     })
                     succeeded = recovered
                     success_time = retry_time
@@ -449,12 +449,12 @@ def _payment_events(periods: list[dict], customers: list[dict], end_date: date, 
                     "payment_type": initial_type,
                     "payment_status": "succeeded",
                     "attempt_number": 1,
-                    "ingested_at": billing_time + pd.Timedelta(hours=2),
+                    "ingested_at": billing_time + timedelta(hours=2),
                 })
                 succeeded = True
                 success_time = billing_time
             if succeeded and rng.random() < config.refund_rate:
-                refund_time = success_time + pd.Timedelta(days=int(rng.integers(2, 12)))
+                refund_time = success_time + timedelta(days=int(rng.integers(2, 12)))
                 if refund_time < min(period_end, end_limit):
                     payments.append({
                         "payment_id": f"PAY-{_stable_int(base_key, 'refund'):011d}",
@@ -465,7 +465,7 @@ def _payment_events(periods: list[dict], customers: list[dict], end_date: date, 
                         "payment_type": "refund",
                         "payment_status": "succeeded",
                         "attempt_number": 1,
-                        "ingested_at": refund_time + pd.Timedelta(hours=2),
+                        "ingested_at": refund_time + timedelta(hours=2),
                     })
             cycle += 1
             billing_time = period["period_start_timestamp"] + pd.DateOffset(months=cycle)
@@ -502,14 +502,41 @@ def _campaign_daily(assignments: list[dict], outcomes: list[dict], start_date: d
             rng = _rng(config, "campaign_daily", campaign.campaign_id, day.isoformat())
             daily_assignments = assignment_groups.get((campaign.campaign_id, day), assignment_df.iloc[0:0])
             treatment = daily_assignments[daily_assignments["assignment_arm"] == "Treatment"] if not daily_assignments.empty else daily_assignments
-            exposed = treatment["first_exposed_at"].notna().sum() if not treatment.empty else 0
+            exposed = (
+                treatment["first_exposed_at"].notna().sum()
+                if not treatment.empty
+                else 0
+            )
+            attempted_sends = (
+                len(treatment)
+                if campaign.channel == "Email"
+                else 0
+            )
             if campaign.channel == "Email":
                 impressions = int(exposed)
             else:
                 growth, weekday, seasonal = _date_factors(day, start_date, config)
                 impressions = max(int(rng.poisson(campaign.mean_daily_eligible * 42 * growth * weekday * seasonal)), int(exposed))
             clicks = int(rng.binomial(impressions, campaign.click_through_rate)) if impressions else 0
-            spend = round(clicks * campaign.cost_per_click * float(rng.normal(1.0, 0.06)), 2)
+            if campaign.channel == "Email":
+                production_cost = (
+                    campaign.email_production_cost_per_send
+                    if attempted_sends > 0
+                    else 0.0
+                )
+                spend = round(
+                    production_cost
+                    + attempted_sends
+                    * campaign.email_cost_per_attempted_send,
+                    2,
+                )
+            else:
+                spend = round(
+                    clicks
+                    * campaign.cost_per_click
+                    * float(rng.normal(1.0, 0.06)),
+                    2,
+                )
             conversions = int(conversion_counts.get((campaign.campaign_id, day), 0))
             platform_conversions = max(0, int(round(conversions * float(rng.normal(1.12, 0.10)))))
             rows.append({
@@ -519,7 +546,7 @@ def _campaign_daily(assignments: list[dict], outcomes: list[dict], start_date: d
                 "clicks": clicks,
                 "spend": spend,
                 "platform_attributed_conversions": platform_conversions,
-                "ingested_at": pd.Timestamp(day, tz="UTC") + pd.Timedelta(days=1, hours=4),
+                "ingested_at": pd.Timestamp(day, tz="UTC") + timedelta(days=1, hours=4),
             })
     return rows
 
