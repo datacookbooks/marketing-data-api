@@ -28,6 +28,7 @@ class CampaignConfig:
     campaign_name: str
     channel: str
     objective: str
+    primary_conversion_event: str
     active_start_date: date
     active_end_date: date | None
     treatment_share: float
@@ -71,10 +72,12 @@ class ProjectConfig:
     campaigns: Tuple[CampaignConfig, ...] = field(default_factory=lambda: (
         CampaignConfig(
             101, "Guitar Lesson Search", "Paid Search", "Acquisition",
+            "registration",
             date(2024, 1, 1), None, 0.85, 25.0, 0.090, 0.018, 0.90, 0.075, 2.10,
         ),
         CampaignConfig(
             102, "Learn Guitar Social", "Paid Social", "Acquisition",
+            "registration",
             date(2024, 1, 1), None, 0.85, 38.0, 0.035, 0.010, 0.82, 0.020, 1.35,
         ),
         # Avoidable quarterly production: 4 hours at $60/hour,
@@ -82,6 +85,7 @@ class ProjectConfig:
         CampaignConfig(
             103, "Free-to-Pro Nurture", "Email",
             "Free-to-paid conversion",
+            "first_paid_start",
             date(2024, 1, 1), None, 0.85, 0.0, 0.045,
             0.032, 0.76, 0.115, 0.0,
             email_cost_per_attempted_send=0.001,

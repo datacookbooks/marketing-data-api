@@ -47,6 +47,25 @@ def test_next_date_appends_rows(generation_service, small_config):
     assert after > before
 
 
+def test_campaign_primary_conversion_events_are_explicit(small_config):
+    simulation = generate_historical_data(
+        start_date=small_config.history_start_date,
+        end_date=small_config.historical_cutoff_date,
+        config=small_config,
+    )
+    campaigns = simulation.clean_tables["dim_campaign"]
+
+    actual = campaigns.set_index("campaign_id")[
+        "primary_conversion_event"
+    ].to_dict()
+
+    assert actual == {
+        101: "registration",
+        102: "registration",
+        103: "first_paid_start",
+    }
+
+
 def test_campaign_daily_has_every_campaign_date(small_config):
     simulation = generate_historical_data(
         start_date=small_config.history_start_date,

@@ -91,6 +91,7 @@ def _dimensions(config: ProjectConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
             "campaign_name": c.campaign_name,
             "channel": c.channel,
             "objective": c.objective,
+            "primary_conversion_event": c.primary_conversion_event,
             "is_evergreen": c.active_end_date is None,
             "active_start_date": pd.Timestamp(c.active_start_date),
             "active_end_date": pd.NaT if c.active_end_date is None else pd.Timestamp(c.active_end_date),
