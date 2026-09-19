@@ -26,7 +26,11 @@ DATA_DICTIONARY = {
         "signup_timestamp": "First registration timestamp", "initial_acquisition_channel": "First known channel",
     },
     "dim_plan": {"plan_id": "Plan key", "monthly_price": "Standard monthly price", "is_paid_plan": "Paid-plan flag"},
-    "dim_campaign": {"campaign_id": "Campaign key", "objective": "Acquisition or free-to-paid objective"},
+    "dim_campaign": {
+        "campaign_id": "Campaign key",
+        "objective": "Acquisition or free-to-paid objective",
+        "primary_conversion_event": "Event that defines a campaign conversion",
+    },
     "fact_subscription_period": {"subscription_period_id": "Continuous-plan-period key", "end_reason": "Why the period ended"},
     "fact_payment": {"payment_id": "Payment-event business key", "attempt_number": "Attempt number within a cycle"},
     "fact_campaign_daily": {"metric_date": "Platform metric date", "spend": "Daily campaign cost"},
@@ -58,6 +62,26 @@ def validate_clean_tables(tables: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     customer_ids = set(tables["dim_customer"]["customer_id"])
     plan_ids = set(tables["dim_plan"]["plan_id"])
     campaign_ids = set(tables["dim_campaign"]["campaign_id"])
+    campaigns = tables["dim_campaign"]
+    allowed_conversion_events = {
+        "registration",
+        "first_paid_start",
+    }
+    invalid_conversion_events = int(
+        (
+            ~campaigns["primary_conversion_event"].isin(
+                allowed_conversion_events
+            )
+        ).sum()
+    )
+    checks.append(
+        _check(
+            "campaign conversion event is recognized",
+            invalid_conversion_events == 0,
+            invalid_conversion_events,
+            "0 unrecognized campaign conversion events",
+        )
+    )
     period_ids = set(tables["fact_subscription_period"]["subscription_period_id"])
     checks.extend([
         _check("subscription customer FK", set(tables["fact_subscription_period"]["customer_id"]) <= customer_ids, "validated", "all customers match"),
